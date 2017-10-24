@@ -1,0 +1,7 @@
+F:\Coding\Veeam\GZipTest\GZipTest\bin\Debug\GZipTest.exe.config
+F:\Coding\Veeam\GZipTest\GZipTest\bin\Debug\GZipTest.exe
+F:\Coding\Veeam\GZipTest\GZipTest\bin\Debug\GZipTest.pdb
+F:\Coding\Veeam\GZipTest\GZipTest\obj\Debug\GZipTest.csproj.CoreCompileInputs.cache
+F:\Coding\Veeam\GZipTest\GZipTest\obj\Debug\GZipTest.exe
+F:\Coding\Veeam\GZipTest\GZipTest\obj\Debug\GZipTest.pdb
+F:\Coding\Veeam\GZipTest\GZipTest\obj\Debug\GZipTest.csprojResolveAssemblyReference.cache
