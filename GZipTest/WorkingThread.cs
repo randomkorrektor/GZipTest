@@ -15,10 +15,7 @@ namespace GZipTest
         public static int threadCount = Environment.ProcessorCount; // количество потоков выбирается по количеству ядер процессора
         static byte[][] dataSource = new byte[threadCount][];
         static byte[][] dataSourceCompress = new byte[threadCount][];
-        public static int blockForCompress = (int)Process.GetCurrentProcess().WorkingSet64 / threadCount;        // Размер блока сжатия вычисляется как количество физической памяти / количество потоков
-                                                                                                                 // .VirtualMemorySize64 / threadCount; - при реализации с размером виртуальной памяти производительность увеличивается, однако, 
-                                                                                                                 // насколько я понял - может приводить к падению программы на различных устройствах из-за файла подкачки
-
+        public static int blockForCompress = (int)Process.GetCurrentProcess().VirtualMemorySize64 / threadCount;   // Размер блока сжатия вычисляется как количество виртуальной памяти / количество потоков
 
         public static Thread[] tPool = new Thread[threadCount]; 
         public static AutoResetEvent[] arePool = new AutoResetEvent[threadCount];
