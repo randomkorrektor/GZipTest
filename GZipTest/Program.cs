@@ -19,43 +19,47 @@ namespace GZipTest
                 string inFileName = args[1].ToString();
                 string outFileName = args[2].ToString();
 
+
                 if (File.Exists(inFileName))
                 {
-                    if (Directory.Exists(Path.GetDirectoryName(outFileName)))
+                    try
                     {
-                        try
+                        switch (args[0].ToString())
                         {
-                            switch (args[0].ToString())
-                            {
-                                case "compress":
-                                    {
-                                        Console.WriteLine("Идет архивация...");
-                                        Controller.CompressFile(inFileName, outFileName);
-                                        Console.WriteLine("Успешно.");
-                                        break;
-                                    }
-                                case "decompress":
-                                    {
-                                        Console.WriteLine("Идут разархивация...");
-                                        Controller.DecompressFile(inFileName, outFileName);
-                                        Console.WriteLine("Успешно.");
-                                        break;
-                                    }
-                                default:
-                                    {
-                                        Console.WriteLine("Неверно введена команда. Поддерживаются только команды \"compress\" и \"decompress\"");
-                                        break;
-                                    }
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Console.WriteLine(ex.Message);
+                            case "compress":
+                                {
+                                    Console.WriteLine("Идет архивация...");
+
+                                    Controller.FileHandling(inFileName, outFileName, true);
+                                    Console.WriteLine("Успешно.");
+                                    break;
+                                }
+                            case "decompress":
+                                {
+
+                                    Console.WriteLine("Идут разархивация...");
+                                    Controller.FileHandling(inFileName, outFileName, false);
+                                    Console.WriteLine("Успешно.");
+                                    break;
+                                }
+                            default:
+                                {
+                                    Console.WriteLine("Неверно введена команда. Поддерживаются только команды \"compress\" и \"decompress\"");
+                                    break;
+                                }
                         }
                     }
-                    else
+                    catch (Exception ex)
                     {
-                        Console.WriteLine("Неверно указан путь вывода.");
+                        if (Writer.fileOut != null)
+                            Writer.fileOut.Close();
+                        for (int i = 0; i < WorkingThread.tPool.Length; i++)
+                        {
+                            if (WorkingThread.tPool[i] != null)
+                                WorkingThread.tPool[i].Abort();
+                        }
+
+                        Console.WriteLine(ex.Message);
                     }
                 }
                 else
@@ -65,9 +69,8 @@ namespace GZipTest
             }
             else
             {
-                Console.WriteLine("Неверный формат входных данных");
+                Console.WriteLine("Неверный формат входных данных. Ожидается формат \"compress\\decompress [имя исходного файла] [имя результирующего файла]\"");
             }
         }
-
     }
 }

@@ -12,12 +12,15 @@ namespace GZipTest
 {
     class WorkingThread
     {
-        public static int threadCount = Environment.ProcessorCount;
+        public static int threadCount = Environment.ProcessorCount; // количество потоков выбирается по количеству ядер процессора
         static byte[][] dataSource = new byte[threadCount][];
         static byte[][] dataSourceCompress = new byte[threadCount][];
-        static int blockForCompress = (int)Process.GetCurrentProcess().WorkingSet64 / threadCount;
+        public static int blockForCompress = (int)Process.GetCurrentProcess().WorkingSet64 / threadCount;        // Размер блока сжатия вычисляется как количество физической памяти / количество потоков
+                                                                                                                 // .VirtualMemorySize64 / threadCount; - при реализации с размером виртуальной памяти производительность увеличивается, однако, 
+                                                                                                                 // насколько я понял - может приводить к падению программы на различных устройствах из-за файла подкачки
 
-        public static Thread[] tPool = new Thread[threadCount];
+
+        public static Thread[] tPool = new Thread[threadCount]; 
         public static AutoResetEvent[] arePool = new AutoResetEvent[threadCount];
         public static string inputFileName;
 
@@ -44,12 +47,12 @@ namespace GZipTest
             {
                 lock (lockerFilePosition)
                 {
-                    readPosition = filePosition;
+                    readPosition = filePosition; // устанавливается позиция цтения
                     threadNumber = readPosition % threadCount;
-                    filePosition++;
+                    filePosition++; 
                 }
 
-                inputStream.Seek(readPosition * blockForCompress, SeekOrigin.Begin);
+                inputStream.Seek(readPosition * blockForCompress, SeekOrigin.Begin); // сдвиг положения потока на начало блока чтения для данного потока
                 if (inputStream.Length - inputStream.Position < blockForCompress)
                 {
                     lock (outLocker)
@@ -60,11 +63,11 @@ namespace GZipTest
                             return;
                         }
                         flag = false;
-                        lockalBlock = (int)(inputStream.Length - inputStream.Position);
+                        lockalBlock = (int)(inputStream.Length - inputStream.Position); // задается размер последнего блока
                     }
                 }
 
-                dataSource[threadNumber] = new byte[lockalBlock];
+                dataSource[threadNumber] = new byte[lockalBlock];  // создается массив размером в блок чтения
                 inputStream.Read(dataSource[threadNumber], 0, lockalBlock);
 
                 using (MemoryStream output = new MemoryStream(dataSource[threadNumber].Length))
@@ -73,15 +76,15 @@ namespace GZipTest
                     {
                         cs.Write(dataSource[threadNumber], 0, dataSource[threadNumber].Length); // данные записываются в output
                     }
-                    dataSourceCompress[threadNumber] = output.ToArray();   //output переводим в массив и передаем в dataSourceZip
+                    dataSourceCompress[threadNumber] = output.ToArray();   //output переводится в массив и передается в dataSourceZip
                 }
 
                 BitConverter.GetBytes(dataSourceCompress[threadNumber].Length + 1)  //получаем размер блока в байтах
                             .CopyTo(dataSourceCompress[threadNumber], 4);           //запись информации о размере
 
-                arePool[(threadNumber + threadCount - 1) % threadCount].WaitOne();
+                arePool[(threadNumber + threadCount - 1) % threadCount].WaitOne(); // выстраивается последовательная очередь на запись сжатых данных в файл
                 Writer.WriteInfo(dataSourceCompress[threadNumber]);
-                arePool[threadNumber].Set();
+                arePool[threadNumber].Set(); //поток, завершивший запись, пропускает следующий
             }
             inputStream.Close();
         }
@@ -101,37 +104,45 @@ namespace GZipTest
             while (true)
             {
                 if (flag)
-                    arePool[(threadNumber + threadCount - 1) % threadCount].WaitOne();
+                    arePool[(threadNumber + threadCount - 1) % threadCount].WaitOne(); //выстраивается очередь потоков на все, кроме последнего обхода
 
                 if (filePosition >= inputStream.Length)
                 {
                     flag = false;
                     inputStream.Close();
                     arePool[threadNumber].Set();
-                    //arePool[(threadNumber + threadCount - 1) % threadCount].Set();
                     return;
                 }
 
-                inputStream.Seek(filePosition, SeekOrigin.Begin);
-                inputStream.Read(buffer, 0, 8);                           //Чтение 8 байт в буфер (4 байта CRC32, 4 байта ISIZE)
-                int compressedBlockSize = (BitConverter.ToInt32(buffer, 4)) - 1;      //вычисляем размер блока   
+                try
+                {
+                    inputStream.Seek(filePosition, SeekOrigin.Begin); //сдвиг положения потока на начало блока чтения для данного потока
+                    inputStream.Read(buffer, 0, 8);                           //Чтение 8 байт в буфер (4 байта CRC32, 4 байта ISIZE)
+                    int compressedBlockSize = (BitConverter.ToInt32(buffer, 4)) - 1;      //вычисляется размер блока   
 
-                filePosition += compressedBlockSize;
-                arePool[threadNumber].Set();
+                    filePosition += compressedBlockSize;  //сдвигается общая позиция чтения
+                    arePool[threadNumber].Set(); // пропускается следующий поток
 
-                dataSourceCompress[threadNumber] = new byte[compressedBlockSize];   //создание массива на основе полученного размера
-                buffer.CopyTo(dataSourceCompress[threadNumber], 0);                         //копирование 8 байт в массив
-                inputStream.Read(dataSourceCompress[threadNumber], 8, dataSourceCompress[threadNumber].Length - 8); //чтение потока размером в длину блока, исключая 8 прочитанных байт
+                    dataSourceCompress[threadNumber] = new byte[compressedBlockSize];   //создание массива на основе полученного размера
+                    buffer.CopyTo(dataSourceCompress[threadNumber], 0);                         //копирование 8 байт в массив
+                    inputStream.Read(dataSourceCompress[threadNumber], 8, dataSourceCompress[threadNumber].Length - 8); //чтение потока размером в длину блока, исключая 8 прочитанных байт
 
-                int decompressedBlockSize = BitConverter.ToInt32(dataSourceCompress[threadNumber], dataSourceCompress[threadNumber].Length - 4);  //вычисляем размер распакованного блока 
-                dataSource[threadNumber] = new byte[decompressedBlockSize];  //создаем массив для распакованного блока
+                    int decompressedBlockSize = BitConverter.ToInt32(dataSourceCompress[threadNumber], dataSourceCompress[threadNumber].Length - 4);  //вычисляется размер распакованного блока 
+                    dataSource[threadNumber] = new byte[decompressedBlockSize];  //создается массив для распакованного блока
+                }
+                catch
+                {
+                    Console.WriteLine("Ошибка чтения. Убедитесь, что архив сжат данным приложением");
+                    Writer.fileOut.Close();
+                    Process.GetCurrentProcess().Kill();
+                }
 
                 using (MemoryStream input = new MemoryStream(dataSourceCompress[threadNumber]))
                 using (GZipStream ds = new GZipStream(input, CompressionMode.Decompress))
                 {
                     try
                     {
-                        ds.Read(dataSource[threadNumber], 0, dataSource[threadNumber].Length);
+                        ds.Read(dataSource[threadNumber], 0, dataSource[threadNumber].Length); //распаковка блоков данных
                     }
                     catch (Exception e)
                     {
@@ -139,13 +150,35 @@ namespace GZipTest
                     }
                 }
                 if (flag)
-                    arePool[(threadNumber + threadCount - 1) % threadCount].WaitOne();
+                    arePool[(threadNumber + threadCount - 1) % threadCount].WaitOne(); //ыстраивается очередь на запись, так же кроме последнего обхода
                 Writer.WriteInfo(dataSource[threadNumber]);
-                arePool[threadNumber].Set();
+                arePool[threadNumber].Set(); //поток, завершивший запись, пропускает следующий
+            }
+        }
 
-
+        public static void OneTradeCompress(string inputFileName, string outputFileName)
+        {
+            using (FileStream FileIn = new FileStream(inputFileName, FileMode.OpenOrCreate))
+            using (FileStream FileOut = File.Create(outputFileName))
+            {
+                using (GZipStream compressionStream = new GZipStream(FileOut, CompressionMode.Compress))
+                {
+                    FileIn.CopyTo(compressionStream);
+                }
             }
 
+        }
+
+        public static void OneTradeDecompress(string inputFileName, string outputFileName)
+        {
+            using (FileStream FileIn = new FileStream(inputFileName, FileMode.Open))
+            using (FileStream FileOut = File.Create(outputFileName))
+            {
+                using (GZipStream decompressionStream = new GZipStream(FileIn, CompressionMode.Decompress))
+                {
+                    decompressionStream.CopyTo(FileOut);
+                }
+            }
         }
     }
 }

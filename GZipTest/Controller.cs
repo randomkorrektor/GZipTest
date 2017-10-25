@@ -10,38 +10,43 @@ namespace GZipTest
 {
     class Controller
     {
-        public static void CompressFile(string inputFileName, string outputFileName)
+        public static void FileHandling(string inputFileName, string outputFileName, bool compress)
         {
-            Writer.fileOut = new FileStream(outputFileName, FileMode.Create);
-            WorkingThread workingThread = new WorkingThread(inputFileName);
-            CreateArePool();
-
-            for (int i = 0; i < WorkingThread.threadCount; i++)
+            if (new FileInfo(inputFileName).Length > WorkingThread.blockForCompress)
             {
-                WorkingThread.tPool[i] = new Thread(new ThreadStart(workingThread.CompressInThread)); 
-                WorkingThread.tPool[i].Start();
+                Writer.fileOut = new FileStream(outputFileName, FileMode.Create);
+                WorkingThread workingThread = new WorkingThread(inputFileName);
+                CreateArePool();
+
+                if (compress)
+                {
+                    for (int i = 0; i < WorkingThread.threadCount; i++)
+                    {
+                        WorkingThread.tPool[i] = new Thread(new ThreadStart(workingThread.CompressInThread));
+                        WorkingThread.tPool[i].Start();
+                    }
+                }
+                else
+                {
+                    for (int i = 0; i < WorkingThread.threadCount; i++)
+                    {
+                        WorkingThread.tPool[i] = new Thread(new ThreadStart(workingThread.DecompressInThread));
+                        WorkingThread.tPool[i].Start();
+                    }
+                }
+
+                JoinAll();
+                Writer.fileOut.Close();
             }
-
-            JoinAll();
-            Writer.fileOut.Close();
-        }
-
-        public static void DecompressFile(string inputFileName, string outputFileName)
-        {
-            Writer.fileOut = new FileStream(outputFileName, FileMode.Create);
-            WorkingThread workingThread = new WorkingThread(inputFileName);
-            CreateArePool();
-
-            for (int i = 0; i < WorkingThread.threadCount; i++)
+            else
             {
-                WorkingThread.tPool[i] = new Thread(new ThreadStart(workingThread.DecompressInThread));
-                WorkingThread.tPool[i].Start();
+                if (compress)
+                    WorkingThread.OneTradeCompress(inputFileName, outputFileName);
+                else
+                    WorkingThread.OneTradeDecompress(inputFileName, outputFileName);
             }
-
-            JoinAll();
-            Writer.fileOut.Close();
         }
-
+        
         private static void CreateArePool()
         {
             WorkingThread.arePool[WorkingThread.arePool.Length - 1] = new AutoResetEvent(true);

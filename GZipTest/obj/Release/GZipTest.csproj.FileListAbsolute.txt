@@ -1,0 +1,6 @@
+F:\Coding\Veeam\GZipTest\GZipTest\bin\Release\GZipTest.exe.config
+F:\Coding\Veeam\GZipTest\GZipTest\bin\Release\GZipTest.exe
+F:\Coding\Veeam\GZipTest\GZipTest\bin\Release\GZipTest.pdb
+F:\Coding\Veeam\GZipTest\GZipTest\obj\Release\GZipTest.csproj.CoreCompileInputs.cache
+F:\Coding\Veeam\GZipTest\GZipTest\obj\Release\GZipTest.exe
+F:\Coding\Veeam\GZipTest\GZipTest\obj\Release\GZipTest.pdb
