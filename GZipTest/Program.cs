@@ -18,8 +18,7 @@ namespace GZipTest
             {
                 string inFileName = args[1].ToString();
                 string outFileName = args[2].ToString();
-
-
+                
                 if (File.Exists(inFileName))
                 {
                     try
@@ -29,14 +28,12 @@ namespace GZipTest
                             case "compress":
                                 {
                                     Console.WriteLine("Идет архивация...");
-
                                     Controller.FileHandling(inFileName, outFileName, true);
                                     Console.WriteLine("Успешно.");
                                     break;
                                 }
                             case "decompress":
                                 {
-
                                     Console.WriteLine("Идут разархивация...");
                                     Controller.FileHandling(inFileName, outFileName, false);
                                     Console.WriteLine("Успешно.");
